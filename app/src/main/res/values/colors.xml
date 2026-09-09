@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- UI 重设计色板：靛蓝→紫罗兰渐变主色 + 活力橙强调 + 命中绿 -->
+<resources>
+    <!-- 品牌主色（渐变两端） -->
+    <color name="primary">#4F46E5</color>
+    <color name="primary_dark">#3730A3</color>
+    <color name="primary_end">#7C3AED</color>
+    <color name="primary_tint">#EEF0FE</color>
+
+    <!-- 语义色 -->
+    <color name="accent">#10B981</color>
+    <color name="accent_tint">#E6F7F1</color>
+    <color name="danger">#FF6B35</color>
+    <color name="danger_tint">#FFF0EA</color>
+
+    <!-- 面板 / 文本 -->
+    <color name="bg_page">#F4F5FA</color>
+    <color name="card">#FFFFFF</color>
+    <color name="field">#F7F8FC</color>
+    <color name="field_stroke">#ECEDF4</color>
+    <color name="stroke_subtle">#E4E6F0</color>
+    <color name="text_primary">#0F1222</color>
+    <color name="text_secondary">#6B7280</color>
+    <color name="text_hint">#9CA3AF</color>
+
+    <!-- 悬浮窗（深色玻璃卡） -->
+    <color name="float_bg">#F2171826</color>
+    <color name="float_inner">#1F2033</color>
+    <color name="float_btn">#262840</color>
+    <color name="float_text_sub">#B9BBD4</color>
+
+    <!-- 兼容旧引用 -->
+    <color name="success">#10B981</color>
+</resources>

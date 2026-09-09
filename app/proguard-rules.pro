@@ -1,0 +1,3 @@
+-keep class com.lzf.easyfloat.** { *; }
+-keep class com.google.mlkit.** { *; }
+-dontwarn com.google.mlkit.**

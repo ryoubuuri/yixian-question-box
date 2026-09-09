@@ -1,0 +1,64 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.example.searchhelper'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.example.searchhelper"
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
+    packagingOptions {
+        // ML Kit ships native libraries; keep the first one when duplicates show up.
+        pickFirst 'lib/*/libjsc.so'
+        exclude 'META-INF/DEPENDENCIES'
+    }
+}
+
+dependencies {
+    // ---- AndroidX ----
+    implementation 'androidx.core:core-ktx:1.12.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.activity:activity-ktx:1.8.2'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
+    implementation 'com.google.android.material:material:1.11.0'
+
+    // ---- Floating window ----
+    implementation 'com.github.princekin-f:EasyFloat:2.0.4'
+
+    // ---- Offline Chinese OCR (ML Kit) ----
+    implementation 'com.google.mlkit:text-recognition-chinese:16.0.1'
+
+    // ---- Networking (OpenAI / DeepSeek compatible Chat Completion) ----
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+
+    // ---- Coroutines (incl. Task.await() for ML Kit) ----
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3'
+
+    // ---- Encrypted storage for the API Key (Android Keystore backed) ----
+    implementation 'androidx.security:security-crypto:1.1.0-alpha06'
+}

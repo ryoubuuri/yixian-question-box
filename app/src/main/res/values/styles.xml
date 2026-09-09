@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.SearchHelper" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryDark">@color/bg_page</item>
+        <item name="colorAccent">@color/accent</item>
+        <item name="colorSecondary">@color/primary_end</item>
+        <item name="android:windowBackground">@color/bg_page</item>
+        <item name="android:statusBarColor">@color/bg_page</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+        <item name="android:colorControlActivated">@color/primary</item>
+    </style>
+
+    <!-- 主 CTA：渐变胶囊（启动悬浮窗） -->
+    <style name="Button.CTA" parent="Widget.AppCompat.Button">
+        <item name="android:background">@drawable/bg_btn_cta</item>
+        <item name="android:textColor">#FFFFFF</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:stateListAnimator">@null</item>
+        <item name="android:elevation">6dp</item>
+    </style>
+
+    <!-- 渐变主按钮（保存配置 / 测试连接等） -->
+    <style name="Button.Primary" parent="Widget.AppCompat.Button">
+        <item name="android:background">@drawable/bg_btn_primary</item>
+        <item name="android:textColor">#FFFFFF</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+
+    <!-- 白底描边次按钮 -->
+    <style name="Button.Outline" parent="Widget.AppCompat.Button">
+        <item name="android:background">@drawable/bg_btn_outline</item>
+        <item name="android:textColor">@color/primary</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+
+    <!-- 浅靛蓝弱按钮（导入题库） -->
+    <style name="Button.TonalIndigo" parent="Widget.AppCompat.Button">
+        <item name="android:background">@drawable/bg_btn_tonal_indigo</item>
+        <item name="android:textColor">@color/primary</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+
+    <!-- 浅橙危险按钮（清空题库） -->
+    <style name="Button.TonalDanger" parent="Widget.AppCompat.Button">
+        <item name="android:background">@drawable/bg_btn_tonal_danger</item>
+        <item name="android:textColor">@color/danger</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+
+    <!-- 浅灰弱按钮（停止服务 / 清除区域 / 恢复默认） -->
+    <style name="Button.TonalGray" parent="Widget.AppCompat.Button">
+        <item name="android:background">@drawable/bg_btn_tonal_gray</item>
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+
+    <!-- 白卡片容器 -->
+    <style name="Card">
+        <item name="android:background">@drawable/bg_card</item>
+        <item name="android:padding">16dp</item>
+    </style>
+
+    <!-- 区块标题 / 辅助说明 -->
+    <style name="Text.SectionTitle" parent="TextAppearance.AppCompat">
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="Text.SectionHint" parent="TextAppearance.AppCompat">
+        <item name="android:textColor">@color/text_hint</item>
+        <item name="android:textSize">11sp</item>
+    </style>
+
+    <style name="Text.FieldLabel" parent="TextAppearance.AppCompat">
+        <item name="android:textColor">#374151</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+</resources>

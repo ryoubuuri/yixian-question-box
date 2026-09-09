@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 主按钮：渐变 + 16dp 圆角 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <gradient
+        android:angle="45"
+        android:startColor="@color/primary"
+        android:endColor="@color/primary_end" />
+    <corners android:radius="16dp" />
+</shape>

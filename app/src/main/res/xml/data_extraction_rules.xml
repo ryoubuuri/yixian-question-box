@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The API Key is a credential: keep every preference file out of cloud backup and
+  device transfer. Imported question banks (filesDir) are still included.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="search_helper.xml" />
+        <exclude domain="sharedpref" path="search_helper_secure.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="search_helper.xml" />
+        <exclude domain="sharedpref" path="search_helper_secure.xml" />
+    </device-transfer>
+</data-extraction-rules>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 11 and below equivalent of data_extraction_rules.xml -->
+<full-backup-content>
+    <exclude domain="sharedpref" path="search_helper.xml" />
+    <exclude domain="sharedpref" path="search_helper_secure.xml" />
+</full-backup-content>
