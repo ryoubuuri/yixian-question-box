@@ -18,7 +18,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
       RELEASE_TAG: ${{ inputs.version }}
-      RELEASE_STORE_FILE: ${{ runner.temp }}/yixian-release.p12
+      RELEASE_STORE_FILE: /tmp/yixian-release.p12
       RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
       RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
       RELEASE_KEY_ALIAS: yixian
