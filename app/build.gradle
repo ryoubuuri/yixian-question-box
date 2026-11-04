@@ -11,8 +11,8 @@ android {
         applicationId "com.yixian.questionbox"
         minSdk 24
         targetSdk 34
-        versionCode (project.findProperty("releaseVersionCode") ?: "2").toInteger()
-        versionName (project.findProperty("releaseVersionName") ?: "0.1.0")
+        versionCode = (project.findProperty("releaseVersionCode") ?: "2").toInteger()
+        versionName = (project.findProperty("releaseVersionName") ?: "0.1.0")
     }
 
     signingConfigs {
