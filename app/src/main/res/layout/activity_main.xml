@@ -363,7 +363,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="支持 .xlsx / .csv / .txt，导入时可指定列"
+                android:text="支持 JSONL / XLSX / CSV，导入前可预览核对"
                 android:textColor="@color/text_hint"
                 android:textSize="11sp" />
 
