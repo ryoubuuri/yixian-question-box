@@ -46,7 +46,7 @@ class RegionCanvasView @JvmOverloads constructor(
     private var activeCorner = -1
 
     private val dimPaint = Paint().apply {
-        color = 0xB3000000
+        color = 0xB3000000.toInt()
         style = Paint.Style.FILL
     }
     private val borderPaint = Paint().apply {
