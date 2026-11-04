@@ -48,7 +48,7 @@ jobs:
           printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RELEASE_STORE_FILE"
           chmod 600 "$RELEASE_STORE_FILE"
       - name: Test and lint
-        run: gradle --no-daemon testDebugUnitTest lintDebug
+        run: gradle --continue --no-daemon testDebugUnitTest lintDebug
       - name: Build signed APK
         run: |
           gradle --no-daemon assembleRelease -PreleaseVersionName="${RELEASE_TAG#v}" -PreleaseVersionCode="$((100 + GITHUB_RUN_NUMBER))"

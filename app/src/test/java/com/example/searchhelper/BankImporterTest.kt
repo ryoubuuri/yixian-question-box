@@ -10,8 +10,9 @@ class BankImporterTest {
 {"q":"越界答案题目","a":["甲","乙"],"ans":"G"}
 """
         val data = BankImporter.readJsonLines(input.toByteArray())
-        assertEquals(1, data.structured!!.size)
-        assertEquals(listOf("乙"), data.structured.first().answerTexts)
+        val questions = requireNotNull(data.structured)
+        assertEquals(1, questions.size)
+        assertEquals(listOf("乙"), questions.first().answerTexts)
         assertEquals(2, data.notices.size)
         assertTrue(data.notices[0].contains("第 2 行"))
         assertTrue(data.notices[1].contains("第 3 行"))
