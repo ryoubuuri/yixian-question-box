@@ -310,7 +310,7 @@ class MainActivity : AppCompatActivity() {
             .setTitle("导入题库")
             .setMessage(
                 "选择导入方式：\n\n" +
-                    "· 追加：保留现有题库，自动跳过重复题目\n" +
+                    "· 追加：保留现有题库，跳过完全重复项，保留冲突答案供核对\n" +
                     "· 覆盖：先清空已导入的题库，再导入（内置示例题库保留）\n\n" +
                     "下一步会显示列预览，由你指定哪一列是题目、哪一列是答案"
             )
@@ -369,7 +369,15 @@ class MainActivity : AppCompatActivity() {
 
         tvInfo.text = "共读取 ${data.rows.size} 行、${data.columnCount} 列。" +
             "已自动猜测列位置（${if (guess.hasHeader) "识别到表头" else "按内容长度推断"}），请确认或修改："
-        tvSample.text = BankImporter.sampleText(data)
+        tvSample.text = BankImporter.sampleText(data) + if (data.notices.isEmpty()) "" else
+            "\n\n跳过 ${data.notices.size} 行，以下有效题目才会导入：\n" + data.notices.take(8).joinToString("\n")
+        if (data.structured != null) {
+            spinnerQuestion.isEnabled = false
+            spinnerAnswer.isEnabled = false
+            checkHeader.isEnabled = false
+            checkHeader.isChecked = false
+            tvInfo.text = "结构化题库：${data.structured.size} 题（含选项和答案），请核对预览。"
+        }
 
         val dialog = AlertDialog.Builder(this)
             .setTitle("确认列对应关系")
@@ -404,7 +412,7 @@ class MainActivity : AppCompatActivity() {
             setStatus("正在写入题库...")
             val outcome = withContext(Dispatchers.IO) {
                 runCatching {
-                    val pairs = BankImporter.toPairs(data, questionColumn, answerColumn, hasHeader)
+                    val pairs = BankImporter.toQuestions(data, questionColumn, answerColumn, hasHeader)
                     QuestionBank.saveImported(this@MainActivity, pairs, append = !replace)
                 }
             }

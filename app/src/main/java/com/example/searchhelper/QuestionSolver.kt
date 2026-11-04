@@ -5,6 +5,8 @@ import android.graphics.Rect
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
@@ -28,9 +30,9 @@ import java.util.concurrent.TimeUnit
  */
 object QuestionSolver {
 
-    private const val MAX_QUESTION_CHARS = 600
+    private const val MAX_QUESTION_CHARS = 6000
     private const val SYSTEM_PROMPT =
-        "你是一个答题助手。只输出答案选项字母或简短结论，再附一句极简解析，不要客套。"
+        "你是学习辅助助手。基于给出的题干和选项给出答案正文，能确定选项对应时再给字母，并简要说明依据。题目不完整或无法确定时明确说明，不编造。"
 
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(20, TimeUnit.SECONDS)
@@ -55,7 +57,8 @@ object QuestionSolver {
     /** Run ML Kit Chinese OCR and return the recognised lines, reading order. */
     suspend fun recognizeLines(bitmap: Bitmap): List<OcrLine> = withContext(Dispatchers.Default) {
         val image = InputImage.fromBitmap(bitmap, 0)
-        val text = recognizer.process(image).await()
+        // Do not recycle the input bitmap while the native OCR task still owns it.
+        val text = withContext(NonCancellable) { recognizer.process(image).await() }
         text.textBlocks.flatMap { block ->
             block.lines.mapNotNull { line ->
                 val box = line.boundingBox ?: return@mapNotNull null
@@ -81,6 +84,8 @@ object QuestionSolver {
             if (isNoiseLine(line.text)) continue
             if (isOptionLine(line.text)) {
                 options.add(line.text)
+            } else if (options.isNotEmpty()) {
+                options[options.lastIndex] += " " + line.text
             } else {
                 kept.add(line)
             }
@@ -103,7 +108,7 @@ object QuestionSolver {
 
     /** e.g. "A．在潮湿场所…" / "① 安全帽" / "(2) 佩戴…" are answer options. */
     private fun isOptionLine(text: String): Boolean {
-        if (text.length > 80) return false
+        if (text.length > 400) return false
         return OPTION_PREFIX.containsMatchIn(text)
     }
 
@@ -120,7 +125,7 @@ object QuestionSolver {
     private fun isNoiseLine(text: String): Boolean {
         if (text.length <= 12 && CHROME_WORDS.any { text.contains(it) }) return true
         // "第 12 题 / 共 20 题", "3/20", timer "00:45" — pure progress indicators.
-        if (Regex("第\\s*\\d+\\s*题|\\d+\\s*[／/]\\s*\\d+|\\d{1,2}:\\d{2}").containsMatchIn(text) &&
+        if (Regex("^(?:第\\s*\\d+\\s*题|\\d+\\s*[／/]\\s*\\d+|\\d{1,2}:\\d{2})$").containsMatchIn(text) &&
             text.length <= 12
         ) return true
         return false
@@ -128,22 +133,31 @@ object QuestionSolver {
 
     // ------------------------------------------------------------------ solve
 
-    /**
-     * Resolve a question:
-     * 1. local bank match on the clean stem only (digits/symbols already dropped by
-     *    [QuestionBank.normalize], so OCR noise there cannot hurt),
-     * 2. if that misses, match the raw text (kept lines + options) as a fallback,
-     * 3. otherwise ask the AI, feeding it the stem and the recognised options.
-     */
+    /** Resolve the structured stem locally; uncertain results remain visible. */
     suspend fun solve(screen: ScreenQuestion): String {
         val stem = screen.stem
         if (stem.isBlank()) return "未识别到题目文字，请调整屏幕内容或框选区域后重试"
 
-        val local = QuestionBank.match(stem) ?: QuestionBank.match(screen.rawText)
-        if (local != null) {
-            return "【本地题库命中】\n题目：${local.question}\n\n答案：${local.answer}"
+        val decision = withContext(Dispatchers.Default) { QuestionBank.match(stem, screen.options) }
+        return when (decision) {
+            is BankDecision.Hit -> {
+                val hit = decision.candidate
+                val entry = hit.entry
+                val mapped = if (decision.screenLabels.isEmpty()) "当前选项未核对，以答案正文为准"
+                    else "当前选项：${decision.screenLabels.joinToString("、")}"
+                "【本地题库 · ${hit.method}】\n来源：${entry.source}\n原题：${entry.question}\n\n" +
+                    "答案：${entry.answerTexts.joinToString("；")}\n$mapped" +
+                    if (entry.explanation.isBlank()) "" else "\n解析：${entry.explanation}"
+            }
+            is BankDecision.Ambiguous -> {
+                val evidence = decision.candidates.joinToString("\n") {
+                    "· ${it.entry.question} → ${it.entry.answerTexts.joinToString("；")}"
+                }
+                val local = "【题库待核对】${decision.reason}\n$evidence"
+                if (!Config.hasApiKey) local else local + "\n\n以下为独立 AI 参考，不代表题库冲突已解决：\n" + askAi(screen)
+            }
+            BankDecision.Miss -> askAi(screen)
         }
-        return askAi(screen)
     }
 
     /** Backwards-compatible entry point: an already-flattened OCR string. */
@@ -197,8 +211,10 @@ object QuestionSolver {
                     .getJSONObject(0)
                     .getJSONObject("message")
                     .getString("content")
-                return@withContext "【AI 解答】\n$content"
+                return@withContext "【AI 参考 · 未经题库验证】\n$content"
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             return@withContext "AI 请求异常：${e.message}"
         }

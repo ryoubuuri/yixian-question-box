@@ -9,3 +9,8 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+*.p12
+*.jks
+*.keystore
+/dist/

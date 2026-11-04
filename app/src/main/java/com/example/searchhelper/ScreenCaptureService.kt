@@ -56,7 +56,7 @@ class ScreenCaptureService : Service() {
         startForegroundNotification()
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_NOT_STICKY
 
     @Suppress("DEPRECATION")
     private fun initMetrics() {
@@ -124,7 +124,19 @@ class ScreenCaptureService : Service() {
         // Android 14 throws if the callback is not registered before use.
         projection.registerCallback(object : MediaProjection.Callback() {
             override fun onStop() {
+                FloatWindow.dismiss()
                 stopSelf()
+            }
+            override fun onCapturedContentResize(width: Int, height: Int) {
+                if (width <= 0 || height <= 0 || (width == screenWidth && height == screenHeight)) return
+                val old = imageReader
+                val reader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 3)
+                screenWidth = width
+                screenHeight = height
+                imageReader = reader
+                virtualDisplay?.resize(width, height, screenDensity)
+                virtualDisplay?.surface = reader.surface
+                old?.close()
             }
         }, Handler(Looper.getMainLooper()))
         mediaProjection = projection
@@ -157,17 +169,19 @@ class ScreenCaptureService : Service() {
             val buffer = plane.buffer
             val pixelStride = plane.pixelStride
             val rowStride = plane.rowStride
-            val rowPadding = rowStride - pixelStride * screenWidth
+            val width = frame.width
+            val height = frame.height
+            val rowPadding = rowStride - pixelStride * width
 
             val bitmap = Bitmap.createBitmap(
-                screenWidth + rowPadding / pixelStride,
-                screenHeight,
+                width + rowPadding / pixelStride,
+                height,
                 Bitmap.Config.ARGB_8888
             )
             buffer.rewind()
             bitmap.copyPixelsFromBuffer(buffer)
             // Trim the stride padding on the right edge.
-            Bitmap.createBitmap(bitmap, 0, 0, screenWidth, screenHeight)
+            Bitmap.createBitmap(bitmap, 0, 0, width, height).also { if (it !== bitmap) bitmap.recycle() }
         } catch (e: Exception) {
             null
         } finally {
@@ -191,6 +205,7 @@ class ScreenCaptureService : Service() {
     }
 
     override fun onDestroy() {
+        FloatWindow.dismiss()
         releaseProjection()
         instance = null
         super.onDestroy()

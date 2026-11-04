@@ -9,6 +9,7 @@ import java.nio.charset.CharacterCodingException
 import java.nio.charset.Charset
 import java.nio.charset.CodingErrorAction
 import java.util.zip.ZipInputStream
+import org.json.JSONObject
 
 /**
  * Question bank file reader.
@@ -22,7 +23,10 @@ import java.util.zip.ZipInputStream
 object BankImporter {
 
     /** Raw table: rows of trimmed cells. Short rows are simply shorter lists. */
-    class TableData(val rows: List<List<String>>, val columnCount: Int)
+    class TableData(
+        val rows: List<List<String>>, val columnCount: Int,
+        val structured: List<BankQuestion>? = null, val notices: List<String> = emptyList()
+    )
 
     class ColumnGuess(val question: Int, val answer: Int, val hasHeader: Boolean)
 
@@ -34,37 +38,70 @@ object BankImporter {
     // ---------------------------------------------------------------- entry
 
     fun readTable(context: Context, uri: Uri): TableData {
-        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+        val bytes = context.contentResolver.openInputStream(uri)?.use {
+            val output = java.io.ByteArrayOutputStream()
+            val buffer = ByteArray(8192)
+            while (true) {
+                val count = it.read(buffer)
+                if (count < 0) break
+                require(output.size() + count <= 16 * 1024 * 1024) { "文件超过 16 MiB，请分批导入" }
+                output.write(buffer, 0, count)
+            }
+            output.toByteArray()
+        }
             ?: throw IllegalArgumentException("无法读取所选文件")
         if (bytes.isEmpty()) throw IllegalArgumentException("所选文件为空")
         // XLSX is a zip package; detect by magic number because content URIs from SAF
         // usually have no usable file extension.
         return if (bytes.size > 2 && bytes[0] == 0x50.toByte() && bytes[1] == 0x4B.toByte()) {
             readXlsxTable(bytes)
+        } else if (decode(bytes).trimStart().startsWith("{")) {
+            readJsonLines(bytes)
         } else {
             readCsvTable(bytes)
         }
+    }
+
+    fun readJsonLines(bytes: ByteArray): TableData {
+        val questions = ArrayList<BankQuestion>()
+        val notices = ArrayList<String>()
+        decode(bytes).lineSequence().forEachIndexed { index, line ->
+            if (line.isNotBlank()) {
+                try { questions.add(QuestionBank.decode(JSONObject(line))) }
+                catch (error: Exception) { notices.add("第 ${index + 1} 行：${error.message}") }
+            }
+        }
+        require(questions.isNotEmpty()) { "没有有效 JSONL 题目。${notices.firstOrNull().orEmpty()}" }
+        return TableData(questions.map { listOf(it.question, it.answer) }, 2, questions, notices)
     }
 
     // ---------------------------------------------------------------- CSV / TXT
 
     fun readCsvTable(bytes: ByteArray): TableData {
         val text = decode(bytes)
-        val lines = text.lineSequence()
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
-            .toList()
-        if (lines.isEmpty()) return TableData(emptyList(), 0)
-
-        val delimiter = detectDelimiter(lines.first())
-        val rows = ArrayList<List<String>>(lines.size)
-        var columnCount = 0
-        for (line in lines) {
-            val cells = splitLine(line, delimiter).map { it.trim() }
-            val width = minOf(cells.size, MAX_COLUMNS)
-            if (width > columnCount) columnCount = width
-            rows.add(cells.take(width))
+        val lines = ArrayList<String>()
+        val record = StringBuilder()
+        var quoted = false
+        var i = 0
+        while (i < text.length) {
+            val ch = text[i]
+            if (ch == '"') {
+                record.append(ch)
+                if (quoted && i + 1 < text.length && text[i + 1] == '"') { record.append('"'); i++ }
+                else quoted = !quoted
+            } else if ((ch == '\n' || ch == '\r') && !quoted) {
+                if (record.isNotBlank()) lines.add(record.toString())
+                record.setLength(0)
+                if (ch == '\r' && i + 1 < text.length && text[i + 1] == '\n') i++
+            } else record.append(ch)
+            i++
         }
+        require(!quoted) { "CSV 引号未闭合，请检查文件" }
+        if (record.isNotBlank()) lines.add(record.toString())
+        if (lines.isEmpty()) return TableData(emptyList(), 0)
+        val delimiter = detectDelimiter(lines.first())
+        val rows = lines.map { splitLine(it, delimiter).map(String::trim).take(MAX_COLUMNS) }
+        val columnCount = rows.maxOfOrNull { it.size } ?: 0
         return TableData(rows, columnCount)
     }
 
@@ -339,6 +376,28 @@ object BankImporter {
             pairs.add(question to answer)
         }
         return pairs
+    }
+
+    fun toQuestions(data: TableData, questionColumn: Int, answerColumn: Int, hasHeader: Boolean): List<BankQuestion> {
+        data.structured?.let { return it }
+        val header = if (hasHeader) data.rows.firstOrNull().orEmpty() else emptyList()
+        val optionColumns = header.indices.filter { index ->
+            index != questionColumn && index != answerColumn &&
+                Regex("(?:选项\\s*[1-8A-Ha-h]|[A-Ha-h]|option\\s*[1-8A-Ha-h])").matches(header[index].trim())
+        }
+        val explanationColumn = header.indexOfFirst { it.trim() in listOf("解析", "explanation") }
+        return data.rows.mapIndexedNotNull { index, row ->
+            if (hasHeader && index == 0) return@mapIndexedNotNull null
+            val stem = row.getOrNull(questionColumn).orEmpty().trim()
+            val answer = row.getOrNull(answerColumn).orEmpty().trim()
+            if (stem.isBlank() || stem.startsWith("#") || answer.isBlank()) return@mapIndexedNotNull null
+            val options = optionColumns.map { row.getOrNull(it).orEmpty().trim() }.dropLastWhile { it.isBlank() }
+            try {
+                BankQuestion(stem, answer, options, row.getOrNull(explanationColumn).orEmpty()).also { it.validate() }
+            } catch (error: IllegalArgumentException) {
+                throw IllegalArgumentException("第 ${index + 1} 行：${error.message}")
+            }
+        }
     }
 
     // ---------------------------------------------------------------- output

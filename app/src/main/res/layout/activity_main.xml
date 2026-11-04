@@ -37,7 +37,7 @@
                 android:paddingTop="4dp"
                 android:paddingRight="10dp"
                 android:paddingBottom="4dp"
-                android:text="AI 识屏 · 免切换应用"
+                android:text="本地题库优先 · AI 辅助兜底"
                 android:textColor="#FFFFFF"
                 android:textSize="11sp" />
 
@@ -45,7 +45,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:text="识屏搜题助手"
+                android:text="一贤题匣"
                 android:textColor="#FFFFFF"
                 android:textSize="24sp"
                 android:textStyle="bold" />
@@ -54,7 +54,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="悬浮截屏 → OCR 识别 → 题库 / AI 匹配 → 答案直达悬浮窗"
+                android:text="框选题目 → 本地 OCR → 题库核对 → AI 参考答案"
                 android:textColor="#E4E1FF"
                 android:textSize="12sp" />
         </LinearLayout>

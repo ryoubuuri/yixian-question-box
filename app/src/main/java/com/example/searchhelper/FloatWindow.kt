@@ -12,6 +12,10 @@ import android.widget.TextView
 import com.lzf.easyfloat.EasyFloat
 import com.lzf.easyfloat.enums.ShowPattern
 import com.lzf.easyfloat.enums.SidePattern
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -25,7 +29,8 @@ object FloatWindow {
 
     /** Guard against double-taps on 【截屏搜题】 while a search is in flight. */
     @Volatile
-    private var searching = false
+    private var searchJob: Job? = null
+    private var generation = 0L
 
     /**
      * Create the floating window, or bring an existing one back.
@@ -39,8 +44,8 @@ object FloatWindow {
         val existing = EasyFloat.getFloatView(TAG)
         if (existing != null) {
             if (existing.isAttachedToWindow && existing.visibility == View.VISIBLE) return
-            // Stale or hidden: drop it before building a fresh one.
-            EasyFloat.dismiss(TAG)
+            // Reopening while a selection is pending cancels that session.
+            dismiss()
         }
         EasyFloat.with(activity)
             .setLayout(R.layout.float_search_box) { view -> bindActions(view) }
@@ -55,6 +60,8 @@ object FloatWindow {
     fun dismiss() {
         // If a region-pick overlay is open (float window hidden beneath it), remove it
         // first so the user is not stranded on a crop screen after the service stops.
+        generation++
+        searchJob?.cancel()
         RegionSelectOverlay.forceDismiss()
         EasyFloat.dismiss(TAG)
     }
@@ -99,82 +106,62 @@ object FloatWindow {
     }
 
     private fun search(tvResult: TextView) {
-        if (searching) return
-        searching = true
-        AppScope.launch {
+        if (searchJob?.isActive == true) return
+        val request = generation
+        searchJob = AppScope.launch {
+            var full: Bitmap? = null
+            var cropped: Bitmap? = null
             try {
                 val service = ScreenCaptureService.instance
-                if (service == null) {
-                    tvResult.text = "截屏服务未运行，请回到首页重新点击【启动悬浮窗】"
+                if (service == null || !service.isReady()) {
+                    tvResult.text = "截屏会话已结束，请回首页重新授权"
                     return@launch
                 }
-
-                // Hide first so the window itself is not captured, then wait for a new
-                // frame. captureBitmap() also polls briefly, but the fixed delay gives
-                // the producer time to publish the float-window-free frame.
                 EasyFloat.hide(TAG)
-                kotlinx.coroutines.delay(250)
-                val bitmap = service.captureBitmap()
-                if (bitmap == null) {
-                    EasyFloat.show(TAG)
-                    tvResult.text = "截屏失败，未获取到图像缓冲区数据。" +
-                        "若反复出现，请回首页点【停止服务并关闭悬浮窗】后重新启动"
+                delay(300)
+                val frame = service.captureBitmap()
+                full = frame
+                if (frame == null) {
+                    tvResult.text = "未获取到屏幕图像，请重试或重新授权"
                     return@launch
                 }
-
-                when (Config.regionMode) {
-                    Config.REGION_MODE_SELECT -> pickRegion(bitmap, tvResult)
-                    Config.REGION_MODE_LAST -> reuseRegion(bitmap, tvResult)
-                    else -> runSearch(bitmap, tvResult)
+                val region = when (Config.regionMode) {
+                    Config.REGION_MODE_SELECT -> selectRegion(frame)
+                    Config.REGION_MODE_LAST -> Config.lastRegionRect?.let { saved ->
+                        Rect((saved.left * frame.width).toInt(), (saved.top * frame.height).toInt(),
+                            (saved.right * frame.width).toInt(), (saved.bottom * frame.height).toInt())
+                    } ?: Rect(0, 0, frame.width, frame.height)
+                    else -> Rect(0, 0, frame.width, frame.height)
                 }
+                if (region == null) { tvResult.text = "已取消识别"; return@launch }
+                cropped = QuestionSolver.cropRegion(frame, region)
+                EasyFloat.show(TAG)
+                if (request == generation) runSearch(cropped!!, tvResult)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                if (request == generation) tvResult.text = "识别未完成：${error.message}"
             } finally {
-                searching = false
+                val crop = cropped
+                if (crop != null && crop !== full && !crop.isRecycled) crop.recycle()
+                full?.let { if (!it.isRecycled) it.recycle() }
+                if (request == generation && EasyFloat.getFloatView(TAG)?.isAttachedToWindow == true) EasyFloat.show(TAG)
             }
         }
     }
 
-    /** REGION_MODE_SELECT: show the crop overlay; float window stays hidden meanwhile. */
-    private fun pickRegion(bitmap: android.graphics.Bitmap, tvResult: TextView) {
-        RegionSelectOverlay.show(
-            AppContext.get(),
-            bitmap,
-            Config.lastRegionRect,
+    private suspend fun selectRegion(bitmap: Bitmap): Rect? = suspendCancellableCoroutine { continuation ->
+        continuation.invokeOnCancellation { RegionSelectOverlay.forceDismiss() }
+        RegionSelectOverlay.show(AppContext.get(), bitmap, Config.lastRegionRect,
             object : RegionSelectOverlay.Callback {
                 override fun onConfirm(regionPx: Rect) {
-                    // Remember it for REGION_MODE_LAST and as the default box next time.
-                    Config.lastRegionRect = normalized(regionPx, bitmap)
-                    AppScope.launch {
-                        EasyFloat.show(TAG)
-                        runSearch(QuestionSolver.cropRegion(bitmap, regionPx), tvResult)
+                    if (continuation.isActive) {
+                        Config.lastRegionRect = normalized(regionPx, bitmap)
+                        continuation.resume(regionPx)
                     }
                 }
-
-                override fun onCancel() {
-                    AppScope.launch {
-                        EasyFloat.show(TAG)
-                        tvResult.text = "已取消识别"
-                    }
-                }
-            }
-        )
-    }
-
-    /** REGION_MODE_LAST: reuse the remembered area; full screen if none was saved. */
-    private suspend fun reuseRegion(bitmap: android.graphics.Bitmap, tvResult: TextView) {
-        val saved = Config.lastRegionRect
-        EasyFloat.show(TAG)
-        if (saved == null) {
-            tvResult.text = "还没有保存过框选区域，本次按全屏识别；\n可在首页切换到【每次框选】先框一次。"
-            runSearch(bitmap, tvResult)
-        } else {
-            val px = Rect(
-                (saved.left * bitmap.width).toInt(),
-                (saved.top * bitmap.height).toInt(),
-                (saved.right * bitmap.width).toInt(),
-                (saved.bottom * bitmap.height).toInt()
-            )
-            runSearch(QuestionSolver.cropRegion(bitmap, px), tvResult)
-        }
+                override fun onCancel() { if (continuation.isActive) continuation.resume(null) }
+            })
     }
 
     private fun normalized(regionPx: Rect, bitmap: Bitmap): RectF {
@@ -191,6 +178,8 @@ object FloatWindow {
         tvResult.text = "正在 OCR 识别题目..."
         val screen = try {
             QuestionSolver.analyze(bitmap)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             tvResult.text = "OCR 失败：${e.message}"
             return
