@@ -2,10 +2,10 @@
 <!-- UI 重设计色板：靛蓝→紫罗兰渐变主色 + 活力橙强调 + 命中绿 -->
 <resources>
     <!-- 品牌主色（渐变两端） -->
-    <color name="primary">#4F46E5</color>
-    <color name="primary_dark">#3730A3</color>
-    <color name="primary_end">#7C3AED</color>
-    <color name="primary_tint">#EEF0FE</color>
+    <color name="primary">#238573</color>
+    <color name="primary_dark">#185F52</color>
+    <color name="primary_end">#238573</color>
+    <color name="primary_tint">#EAF3EF</color>
 
     <!-- 语义色 -->
     <color name="accent">#10B981</color>
@@ -14,7 +14,7 @@
     <color name="danger_tint">#FFF0EA</color>
 
     <!-- 面板 / 文本 -->
-    <color name="bg_page">#F4F5FA</color>
+    <color name="bg_page">#F5F7F5</color>
     <color name="card">#FFFFFF</color>
     <color name="field">#F7F8FC</color>
     <color name="field_stroke">#ECEDF4</color>
