@@ -172,8 +172,18 @@ class MainActivity : AppCompatActivity() {
         refreshStatus()
     }
 
+    override fun onNewIntent(newIntent: Intent) {
+        super.onNewIntent(newIntent)
+        setIntent(newIntent)
+    }
+
     override fun onResume() {
         super.onResume()
+        if (intent.getBooleanExtra("open_settings", false)) {
+            findViewById<View>(R.id.page_bank).visibility = View.GONE
+            findViewById<View>(R.id.page_settings).visibility = View.VISIBLE
+            intent.removeExtra("open_settings")
+        }
         // Back from the answering app: refresh the service / bank / AI state line.
         refreshStatus()
     }

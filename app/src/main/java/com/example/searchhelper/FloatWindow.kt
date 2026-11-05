@@ -92,6 +92,7 @@ object FloatWindow {
             val context = view.context
             context.startActivity(
                 Intent(context, MainActivity::class.java)
+                    .putExtra("open_settings", true)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             )
         }
