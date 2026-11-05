@@ -76,7 +76,16 @@ object FloatWindow {
         val tvResult = view.findViewById<TextView>(R.id.tv_result)
         applyModeLabel(view)
         view.findViewById<Button>(R.id.btn_capture).setOnClickListener { search(tvResult) }
-        view.findViewById<Button>(R.id.btn_close).setOnClickListener { dismiss() }
+        fun expand(show: Boolean) {
+            view.findViewById<View>(R.id.float_ball).visibility = if (show) View.GONE else View.VISIBLE
+            view.findViewById<View>(R.id.float_panel).visibility = if (show) View.VISIBLE else View.GONE
+        }
+        view.findViewById<View>(R.id.float_ball).setOnClickListener {
+            expand(true)
+            search(tvResult)
+        }
+        view.findViewById<View>(R.id.float_ball).setOnLongClickListener { dismiss(); true }
+        view.findViewById<Button>(R.id.btn_close).setOnClickListener { expand(false) }
         // Reach the AI settings without hunting for the launcher icon. The float window
         // lives outside any Activity, so the intent needs FLAG_ACTIVITY_NEW_TASK.
         view.findViewById<Button>(R.id.btn_settings).setOnClickListener {

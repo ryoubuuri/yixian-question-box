@@ -142,6 +142,14 @@ class MainActivity : AppCompatActivity() {
         tvKeyStatus = findViewById(R.id.tv_key_status)
         btnTestAi = findViewById(R.id.btn_test_ai)
 
+        findViewById<Button>(R.id.tab_bank).setOnClickListener {
+            findViewById<View>(R.id.page_bank).visibility = View.VISIBLE
+            findViewById<View>(R.id.page_settings).visibility = View.GONE
+        }
+        findViewById<Button>(R.id.tab_settings).setOnClickListener {
+            findViewById<View>(R.id.page_bank).visibility = View.GONE
+            findViewById<View>(R.id.page_settings).visibility = View.VISIBLE
+        }
         bindAiSettings()
 
         findViewById<Button>(R.id.btn_start).setOnClickListener {
